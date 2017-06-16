@@ -6,3 +6,15 @@ if ! type gazelle > /dev/null; then
 fi
 
 gazelle -go_prefix istio.io/galley
+
+# go_proto_library() generated build targets do not match paths
+# expected by gazelle. For example, the actual io_istio_api BUILD
+# target is "@io_istio_api//:proxy/v1/config" but gazelle expects
+# ""@io_istio_api//proxy/v1/config:go_default_library". Ideally we
+# could update go_proto_library to generate bazel compatible targets,
+# but as a workaround. As a temporary workaround we mark the required
+# targets with "# keep" and remove the gazelle-inserted dependencies.
+find . -type f -name BUILD -print0 | \
+    xargs -0 sed -i \
+          -e '/.*@io_istio_api\/\/.*go_default_library.*/d' \
+          -e '/.*@com_github_googleapis_googleapis\/\/.*go_default_library.*/d' \

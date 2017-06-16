@@ -1,4 +1,5 @@
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+load("@bazel_tools//tools/build_defs/docker:docker.bzl", "docker_build")
 load("//docker:galley_docker.bzl", "galley_docker_build")
 
 # Use "manual" target tag to skip rules in the wildcard expansion
@@ -41,4 +42,24 @@ galley_docker_build(
     tars = [
         ":galley_tar",
     ],
+)
+
+pkg_tar(
+    name = "apiserver_tar",
+    extension = "tar.gz",
+    files = [
+        "//cmd/apiserver",
+    ],
+    mode = "0755",
+    package_dir = "/usr/local/bin/",
+    tags = ["manual"],
+)
+
+docker_build(
+    name = "apiserver",
+    base = "@docker_ubuntu//:xenial",
+    entrypoint = ["/usr/local/bin/apiserver"],
+    repository = "istio",
+    tags = ["manual"],
+    tars = [":apiserver_tar"],
 )

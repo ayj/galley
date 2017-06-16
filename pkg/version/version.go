@@ -53,3 +53,17 @@ func init() {
 	Info.ID = buildID
 	Info.Status = buildStatus
 }
+
+// Temporary workaround to make parameterize docker hub and tag for
+// kube-inject. Ideally this would be in cmd/istioctl/inject.go but
+// bazel's linkstamp feature requires all symbols to be in the same
+// golang package. This should go away once we switch over to
+// server-side kube-inject or k8s initializer.
+var (
+	showKubeInjectInfo bool
+
+	// KubeInjectHub is the linker specified docker hub for kube-inject.
+	KubeInjectHub string
+	// KubeInjectTag is the linker specified docker tag for kube-inject.
+	KubeInjectTag string
+)

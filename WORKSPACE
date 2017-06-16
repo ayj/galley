@@ -48,6 +48,7 @@ new_go_repository(
 new_go_repository(
     name = "com_github_geeknoid_gogo_protobuf",
     commit = "210910de191e1cdc05d0b6881c575d9a77e2526f",  # May 1, 2017 (no releases)
+
     importpath = "github.com/geeknoid/protobuf",
 )
 
@@ -59,7 +60,7 @@ new_go_repository(
 
 new_go_repository(
     name = "com_github_golang_protobuf",
-    commit = "8ee79997227bf9b34611aee7946ae64735e6fd93",  # Nov 16, 2016 (no releases)
+    commit = "e325f446bebc2998605911c0a2650d9920361d4a",  # Jun 13, 2017 (no releases)
     importpath = "github.com/golang/protobuf",
 )
 
@@ -69,18 +70,16 @@ package(default_visibility = ["//visibility:public"])
 load("@io_bazel_rules_go//go:def.bzl", "go_prefix")
 go_prefix("github.com/googleapis/googleapis")
 
-load("@org_pubref_rules_protobuf//gogo:rules.bzl", "gogoslick_proto_library")
+load("@org_pubref_rules_protobuf//go:rules.bzl", "go_proto_library")
 
-gogoslick_proto_library(
-    name = "google/rpc",
+go_proto_library(
+    name = "google/api/annotations",
     protos = [
-        "google/rpc/code.proto",
-        "google/rpc/error_details.proto",
-        "google/rpc/status.proto",
+        "google/api/annotations.proto",
+        "google/api/http.proto",
     ],
     importmap = {
-        "google/protobuf/any.proto": "github.com/gogo/protobuf/types",
-        "google/protobuf/duration.proto": "github.com/gogo/protobuf/types",
+        "google/protobuf/descriptor.proto": "github.com/golang/protobuf/protoc-gen-go/descriptor",
     },
     imports = [
         "../../external/com_github_google_protobuf/src",
@@ -89,7 +88,31 @@ gogoslick_proto_library(
         "@com_github_google_protobuf//:well_known_protos",
     ],
     deps = [
-        "@com_github_gogo_protobuf//types:go_default_library",
+        "@com_github_golang_protobuf//protoc-gen-go/descriptor:go_default_library",
+    ],
+    verbose = 0,
+)
+
+go_proto_library(
+    name = "google/rpc",
+    protos = [
+        "google/rpc/code.proto",
+        "google/rpc/error_details.proto",
+        "google/rpc/status.proto",
+    ],
+    importmap = {
+        "google/protobuf/any.proto": "github.com/golang/protobuf/ptypes/any",
+        "google/protobuf/duration.proto": "github.com/golang/protobuf/ptypes/duration",
+    },
+    imports = [
+        "../../external/com_github_google_protobuf/src",
+    ],
+    inputs = [
+        "@com_github_google_protobuf//:well_known_protos",
+    ],
+    deps = [
+        "@com_github_golang_protobuf//ptypes/any:go_default_library",
+        "@com_github_golang_protobuf//ptypes/duration:go_default_library",
     ],
     verbose = 0,
 )
@@ -188,9 +211,9 @@ new_go_repository(
 load("//:repositories.bzl", "new_git_or_local_repository")
 
 new_git_or_local_repository(
-    name = "com_github_istio_api",
+    name = "io_istio_api",
     build_file = "BUILD.api",
-    commit = "7d82318c70c7ba8611eed585ac1a8da44a005adb",  # May 1, 2017 (no releases)
+    commit = "af5afdafc95826a5716facc2ea025f1e27bb8225",  # June 8, 2017
     path = "../api",
     remote = "https://github.com/istio/api.git",
     # Change this to True to use ../api directory
@@ -451,6 +474,22 @@ new_go_repository(
 )
 
 ##
+## Kubernetes
+##
+
+new_go_repository(
+    name = "io_k8s_apimachinery",
+    commit = "20e10d54608f05c3059443a6c0afb9979641e88d",
+    importpath = "k8s.io/apimachinery",
+)
+
+new_go_repository(
+    name = "io_k8s_client_go",
+    commit = "4e221f82e2ad6e61bd6190602de9c3400d79f1aa",  # Apr 4, 2017
+    importpath = "k8s.io/client-go",
+)
+
+##
 ## Testing
 ##
 
@@ -458,4 +497,10 @@ git_repository(
     name = "istio_test_infra",
     commit = "983183f98b79f8b67fe380fef4cdd21481830fd7",  # Apr 13, 2017 (no releases)
     remote = "https://github.com/istio/test-infra.git",
+)
+
+new_go_repository(
+    name = "com_github_pmezard_go_difflib",
+    commit = "d8ed2627bdf02c080bf22230dbb337003b7aba2d",
+    importpath = "github.com/pmezard/go-difflib",
 )

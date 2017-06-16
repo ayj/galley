@@ -1,0 +1,41 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "config.go",
+        "controller.go",
+        "conversion.go",
+        "error.go",
+        "secret.go",
+        "service.go",
+        "validation.go",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_ghodss_yaml//:go_default_library",
+        "@com_github_golang_glog//:go_default_library",
+        "@com_github_golang_protobuf//jsonpb:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@com_github_golang_protobuf//ptypes:go_default_library",
+        "@com_github_golang_protobuf//ptypes/duration:go_default_library",
+        "@com_github_hashicorp_go_multierror//:go_default_library",
+        "@io_istio_api//:proxy/v1/config",  # keep
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    size = "small",
+    srcs = [
+        "service_test.go",
+        "validation_test.go",
+    ],
+    library = ":go_default_library",
+    deps = [
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@com_github_golang_protobuf//ptypes:go_default_library",
+        "@com_github_golang_protobuf//ptypes/duration:go_default_library",
+        "@com_github_hashicorp_go_multierror//:go_default_library",
+    ],
+)

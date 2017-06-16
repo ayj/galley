@@ -21,3 +21,8 @@ if [[ $? == 0 ]];
 then
     echo "buildVersion ${VERSION}"
 fi
+
+# Add kube-inject hub and tag key-values if present
+if [ -a ${ROOT}/kube-inject-versions ]; then
+    source ${ROOT}/kube-inject-versions
+fi

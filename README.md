@@ -18,5 +18,5 @@ see the Istio [contribution guidelines](https://github.com/istio/istio/blob/mast
 Istio's [development guide](https://github.com/istio/istio/blob/master/devel/README.md)
 presents everything you need to know to create, build, and test code for Galley.
 
-History/last working version of former istioctl is visible at https://github.com/istio/pilot/tree/pilot-0-2-0-working/cmd/istioctl
+History/last working version of former istioctl is visible at https://github.com/istio/galley/tree/galley-0-2-0-working/cmd/istioctl
 
