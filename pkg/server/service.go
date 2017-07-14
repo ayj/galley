@@ -63,7 +63,8 @@ func (s *GalleyService) ListFiles(ctx context.Context, req *galleypb.ListFilesRe
 	return &galleypb.ListFilesResponse{Entries: entries}, nil
 }
 
-func (s *GalleyService) createOrUpdate(ctx context.Context, path, fileContents string, metadata *galleypb.Metadata, ctype galleypb.ContentType) (*galleypb.File, error) {
+func (s *GalleyService) createOrUpdate(ctx context.Context, path, fileContents string, metadata *galleypb.Metadata,
+	ctype galleypb.ContentType) (*galleypb.File, error) {
 	// Extract the original configuration file contents and merge with
 	// the user specified path and metadata.
 	//

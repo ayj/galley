@@ -211,7 +211,7 @@ func TestCRUD(t *testing.T) {
 	if file.Path != p1 {
 		t.Fatalf("Wrong path: Got %v\nWant %v", file.Path, p1)
 	}
-	if err := diffContent(file.Contents, testConfig); err != nil {
+	if err = diffContent(file.Contents, testConfig); err != nil {
 		t.Fatalf("GetFile(%v) wrong file contents: %v", p1, err)
 	}
 	path, ok := header["file-path"]
@@ -254,7 +254,7 @@ func TestCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get the file %s: %v", p2, err)
 	}
-	if err := diffContent(file.Contents, string(jsonData)); err != nil {
+	if err = diffContent(file.Contents, string(jsonData)); err != nil {
 		t.Fatalf("GetFile(%v) wrong file contents: %v", p2, err)
 	}
 	resp, err = tm.client.ListFiles(ctx, &galleypb.ListFilesRequest{Path: "/dept1", IncludeContents: true})
@@ -267,7 +267,7 @@ func TestCRUD(t *testing.T) {
 	if resp.Entries[0].Path != p1 {
 		t.Fatalf("ListFiles(/depth) returned wrong path: got %v want %v", resp.Entries[0].Path, p1)
 	}
-	if err := diffContent(resp.Entries[0].Contents, testConfig); err != nil {
+	if err = diffContent(resp.Entries[0].Contents, testConfig); err != nil {
 		t.Fatalf("ListFiles(/dept) wrong file contents: %v", err)
 	}
 	_, err = tm.client.DeleteFile(ctx, &galleypb.DeleteFileRequest{Path: p1})
