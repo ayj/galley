@@ -16,6 +16,9 @@
 package server
 
 import (
+	"fmt"
+
+	"github.com/ghodss/yaml"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
@@ -60,22 +63,54 @@ func (s *GalleyService) ListFiles(ctx context.Context, req *galleypb.ListFilesRe
 	return &galleypb.ListFilesResponse{Entries: entries}, nil
 }
 
-func (s *GalleyService) createOrUpdate(ctx context.Context, file *galleypb.File, ctype galleypb.ContentType) (*galleypb.File, error) {
-	bytes, err := proto.Marshal(file)
+func (s *GalleyService) createOrUpdate(ctx context.Context, path, fileContents string, metadata *galleypb.Metadata, ctype galleypb.ContentType) (*galleypb.File, error) {
+	// Extract the original configuration file contents and merge with
+	// the user specified path and metadata.
+	//
+	// TODO: This local decoding should be replaced by the external
+	// TransformerAndValidator services which can decode and validate
+	// specific types and return more useful error messages in cases
+	// of invalid configuration input.
+	var merged *galleypb.File
+	switch ctype {
+	case galleypb.ContentType_UNKNOWN, galleypb.ContentType_JSON, galleypb.ContentType_YAML:
+		orig := struct {
+			Path     string                 `json:"path,omitempty"`
+			Contents map[string]interface{} `json:"contents"`
+			Metadata *galleypb.Metadata     `json:"metadata,omitempty"`
+		}{}
+		if err := yaml.Unmarshal([]byte(fileContents), &orig); err != nil {
+			return nil, err
+		}
+		origConfigFileContent, err := yaml.Marshal(orig.Contents)
+		if err != nil {
+			return nil, err
+		}
+		merged = &galleypb.File{
+			Path:     path,
+			Metadata: metadata,
+			Contents: string(origConfigFileContent),
+		}
+	default:
+		return nil, fmt.Errorf("unsupported content_type: %v", ctype)
+	}
+
+	bytes, err := proto.Marshal(merged)
 	if err != nil {
 		return nil, err
 	}
+
 	// TODO: parse the contents accoding to ctype, and then store the parsed data for watchers.
-	// TODO: validate the contents, invoke validation servers.
+	// TODO: Should Galley normalize configuration file formats when saving to the store?
 	// Maybe we want to store parsed data (i.e. ConfigFile message) separately, using ":raw" suffix for this reason.
-	file.Revision, err = s.s.Set(ctx, file.Path+":raw", bytes, -1 /* revision */)
+	merged.Revision, err = s.s.Set(ctx, merged.Path+":raw", bytes, -1 /* revision */)
 	if err != nil {
 		return nil, err
 	}
-	if err = sendFileHeader(ctx, file); err != nil {
+	if err = sendFileHeader(ctx, merged); err != nil {
 		return nil, err
 	}
-	return file, nil
+	return merged, nil
 }
 
 // CreateFile implements galleypb.Galley interface.
@@ -83,7 +118,7 @@ func (s *GalleyService) CreateFile(ctx context.Context, req *galleypb.CreateFile
 	if _, err := getFile(ctx, s.s, req.Path); err == nil {
 		return nil, status.Newf(codes.InvalidArgument, "path %s already existed", req.Path).Err()
 	}
-	return s.createOrUpdate(ctx, &galleypb.File{Path: req.Path, Contents: req.Contents, Metadata: req.Metadata}, req.ContentType)
+	return s.createOrUpdate(ctx, req.Path, req.Contents, req.Metadata, req.ContentType)
 }
 
 // UpdateFile implements galleypb.Galley interface.
@@ -91,7 +126,7 @@ func (s *GalleyService) UpdateFile(ctx context.Context, req *galleypb.UpdateFile
 	if _, err := getFile(ctx, s.s, req.Path); err != nil {
 		return nil, status.Newf(codes.NotFound, "can't update %s, not found", req.Path).Err()
 	}
-	return s.createOrUpdate(ctx, &galleypb.File{Path: req.Path, Contents: req.Contents, Metadata: req.Metadata}, req.ContentType)
+	return s.createOrUpdate(ctx, req.Path, req.Contents, req.Metadata, req.ContentType)
 }
 
 // DeleteFile implements galleypb.Galley interface.

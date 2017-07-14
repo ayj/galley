@@ -54,7 +54,7 @@ service Galley {
 
   // List config files.
   // A note on http mapping.
-  // google.api.http permits the multi segment match '**' operator as the last match only, 
+  // google.api.http permits the multi segment match '**' operator as the last match only,
   // except when :VERB is used. Here we use :list verb to disambiguate between
   // GET on a file and GET on a directory.
   rpc ListFiles(ListFilesRequest) returns (ListFilesResponse) {
@@ -85,7 +85,7 @@ service Galley {
 }
 
 // content type of a file when it is sent by the client.
-enum ContentType{
+enum ContentType {
   UNKNOWN = 0;
   JSON = 1;
   YAML = 2;
@@ -93,24 +93,42 @@ enum ContentType{
 }
 
 message CreateFileRequest {
+  // Path of the user configuration file. This takes precedence over
+  // the path encoded in istio.galley.v1.File::contents.
   string path = 1;
 
+  // The original file contents of the user configuration as defined
+  // by [File][istio.galley.v1.File]. This should reflect the
+  // unmodified input source file as originally specified by the
+  // user. Clients may decode the file content to extract specific
+  // fields, e.g. istio.galley.v1.file::path, but should not persist
+  // the re-encoded version in the request's `content` field.
   string contents = 2;
 
   ContentType content_type = 3;
 
-  // client supplied metadata.
+  // Client supplied metadata. This takes precedence over the metadata
+  // encoded in istio.galley.v1.File::contents.
   Metadata metadata = 4;
 }
 
 message UpdateFileRequest {
+  // Path of the user configuration file. This takes precedence over
+  // the path encoded in istio.galley.v1.File::contents.
   string path = 1;
 
+  // The original file contents of the user configuration as defined
+  // by [File][istio.galley.v1.File]. This should reflect the
+  // unmodified input source file as originally specified by the
+  // user. Clients may decode the file content to extract specific
+  // fields, e.g. istio.galley.v1.file::path, but should not persist
+  // the re-encoded version in the request's `content` field.
   string contents = 2;
 
   ContentType content_type = 3;
 
-  // client supplied metadata.
+  // Client supplied metadata. This takes precedence over the metadata
+  // encoded in istio.galley.v1.File::contents.
   Metadata metadata = 4;
 
   // Revision is used to avoid blind writes.
@@ -118,7 +136,7 @@ message UpdateFileRequest {
   int64 revision = 5;
 }
 
-message ListFilesResponse{
+message ListFilesResponse {
   // if include_contents is specified, this includes file contents.
   repeated File entries = 1;
 
@@ -127,11 +145,11 @@ message ListFilesResponse{
   string next_page_token = 2;
 }
 
-message ListFilesRequest{
+message ListFilesRequest {
   // Path of the directory from root.
   string path = 1;
 
-  // Recurse thru the directory hierarchy. 
+  // Recurse thru the directory hierarchy.
   bool recurse = 2;
 
   // Include [File][istio.galley.v1.File] contents along with paths.
@@ -144,14 +162,14 @@ message ListFilesRequest{
   int32 max_page_size = 5;
 }
 
-message GetFileRequest{
-  // path of the config file from root.
-  string path = 1; 
+message GetFileRequest {
+ // path of the config file from root.
+  string path = 1;
 }
 
-message DeleteFileRequest{
+message DeleteFileRequest {
   // path of the config file from root.
-  string path = 1; 
+  string path = 1;
 
   // Revision is used to avoid blind writes.
   // The default (revision == 0) means allow blind writes.
@@ -160,10 +178,12 @@ message DeleteFileRequest{
 
 // A view of configuration file stored at a location.
 // A file must have a *.cfg extension.
-message File{
+message File {
   string path = 1;
 
-  // Contents are modified by Galley. A roundtrip may not yeild the same result.
+  // Configuration file contents as defined by
+  // istio.galley.v1.ConfigFile. The contents of this file may be
+  // modified by Galley. A roundtrip may not yeild the same result.
   string contents = 2;
 
   // client supplied metadata.

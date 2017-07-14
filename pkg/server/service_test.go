@@ -79,78 +79,97 @@ func (tm *testManager) close() {
 }
 
 const testConfig = `
-scope: shipping.FQDN
-name: service.cfg
-config:
-  - type: constructor
-    name: request_count
-    spec:
-      labels:
-        dc: target.data_center
-        service: target.service
-      value: request.size
-  - type: handler
-    name: mystatsd
-    spec:
-      impl: istio.io/statsd
-      params:
-        host: statshost.FQDN
-        port: 9080
-  - type: rule
-    spec:
-      handler: $mystatsd
-      instances:
-      - $request_count
-      selector: target.service == "shipping.FQDN"
-  - type: constructor
-    name: deny_source_ip
-    spec:
-      value: request.source_ip
-  - type: rule
-    spec:
-      handler: $mesh.denyhandler
-      instances:
-      - $deny_source_ip
-      selector: target.service == "shipping.FQDN" && source.labels["app"] != "billing"
+contents:
+  scope: shipping.FQDN
+  name: service.cfg
+  config:
+    - type: constructor
+      name: request_count
+      spec:
+        labels:
+          dc: target.data_center
+          service: target.service
+        value: request.size
+    - type: handler
+      name: mystatsd
+      spec:
+        impl: istio.io/statsd
+        params:
+          host: statshost.FQDN
+          port: 9080
+    - type: rule
+      spec:
+        handler: $mystatsd
+        instances:
+        - $request_count
+        selector: target.service == "shipping.FQDN"
+    - type: constructor
+      name: deny_source_ip
+      spec:
+        value: request.source_ip
+    - type: rule
+      spec:
+        handler: $mesh.denyhandler
+        instances:
+        - $deny_source_ip
+        selector: target.service == "shipping.FQDN" && source.labels["app"] != "billing"
 ## Proxy rules
-  - type: route-rule
-    spec:
-      destination: billing.FQDN
-      source: shipping.FQDN
-      match:
-        httpHeaders:
-          cookie:
-            regex: "^(.*?;)?(user=test-user)(;.*)?$"
-      route:
-      - tags:
-          version: v1
-        weight: 100
-      httpFault:
-        delay:
-          percent: 5
-          fixedDelay: 2s
-  - type: route-rule
-    spec:
-      destination: shipping.FQDN
-      match:
-        httpHeaders:
-          cookie:
-            regex: "^(.*?;)?(user=test-user)(;.*)?$"
-      route:
-      - tags:
-          version: v1
-        weight: 90
-      - tags:
-          version: v2
-        weight: 10
-  - type: route-rule
-    spec:
-      destination: shipping.FQDN
-      route:
-      - tags:
-          version: v1
-        weight: 100
+    - type: route-rule
+      spec:
+        destination: billing.FQDN
+        source: shipping.FQDN
+        match:
+          httpHeaders:
+            cookie:
+              regex: "^(.*?;)?(user=test-user)(;.*)?$"
+        route:
+        - tags:
+            version: v1
+          weight: 100
+        httpFault:
+          delay:
+            percent: 5
+            fixedDelay: 2s
+    - type: route-rule
+      spec:
+        destination: shipping.FQDN
+        match:
+          httpHeaders:
+            cookie:
+              regex: "^(.*?;)?(user=test-user)(;.*)?$"
+        route:
+        - tags:
+            version: v1
+          weight: 90
+        - tags:
+            version: v2
+          weight: 10
+    - type: route-rule
+      spec:
+        destination: shipping.FQDN
+        route:
+        - tags:
+            version: v1
+          weight: 100
 `
+
+// Semantic comparison of the configuration file content. This
+// compares the actual configuration contents with the desired user
+// file which includes a content subfield.
+func diffContent(gotConfigContents, wantFile string) error {
+	var got map[string]interface{}
+	var want map[string]interface{}
+	if err := yaml.Unmarshal([]byte(gotConfigContents), &got); err != nil {
+		return fmt.Errorf("Error umarshalling actual file contents `got`: %v", err)
+	}
+	if err := yaml.Unmarshal([]byte(wantFile), &want); err != nil {
+		return fmt.Errorf("Error unmarshalling desired file contents `want`: %v", err)
+	}
+	if !reflect.DeepEqual(gotConfig, want["contents"]) {
+		return fmt.Errorf("Wrong YAML file contents: \ngot  %+v\nwant %+v", got, want["contents"])
+	}
+	return nil
+}
 
 func TestCRUD(t *testing.T) {
 	tm := &testManager{}
@@ -165,15 +184,15 @@ func TestCRUD(t *testing.T) {
 	ctx := context.Background()
 	file, err := tm.client.GetFile(ctx, &galleypb.GetFileRequest{Path: p1})
 	if err == nil {
-		t.Errorf("Got %+v unexpectedly", file)
+		t.Fatalf("Got %+v unexpectedly", file)
 	}
 
 	resp, err := tm.client.ListFiles(ctx, &galleypb.ListFilesRequest{Path: "/dept1", IncludeContents: true})
 	if err != nil {
-		t.Errorf("Failed to list files: %v", err)
+		t.Fatalf("Failed to list files: %v", err)
 	}
 	if len(resp.Entries) != 0 {
-		t.Errorf("Unexpected response: %+v", resp)
+		t.Fatalf("Unexpected response: %+v", resp)
 	}
 
 	_, err = tm.client.CreateFile(ctx, &galleypb.CreateFileRequest{
@@ -181,30 +200,33 @@ func TestCRUD(t *testing.T) {
 		Contents: testConfig,
 	})
 	if err != nil {
-		t.Errorf("Falied to create the file %s: %+v", p1, err)
+		t.Fatalf("Falied to create the file %s: %+v", p1, err)
 	}
 
 	var header metadata.MD
 	file, err = tm.client.GetFile(ctx, &galleypb.GetFileRequest{Path: p1}, grpc.Header(&header))
 	if err != nil {
-		t.Errorf("Failed to get the file: %v", err)
+		t.Fatalf("Failed to get the file: %v", err)
 	}
-	if file.Path != p1 || file.Contents != testConfig {
-		t.Errorf("Got %v, Want %v", file, &galleypb.File{Path: p1, Contents: testConfig})
+	if file.Path != p1 {
+		t.Fatalf("Wrong path: Got %v\nWant %v", file.Path, p1)
+	}
+	if err := diffContent(file.Contents, testConfig); err != nil {
+		t.Fatalf("GetFile(%v) wrong file contents: %v", p1, err)
 	}
 	path, ok := header["file-path"]
 	if !ok {
-		t.Errorf("file-path not found in header")
+		t.Fatalf("file-path not found in header")
 	}
 	if !reflect.DeepEqual(path, []string{p1}) {
-		t.Errorf("Got %+v, Want %+v", path, []string{p1})
+		t.Fatalf("Got %+v, Want %+v", path, []string{p1})
 	}
 	rev, ok := header["file-revision"]
 	if !ok {
-		t.Errorf("file-revision not found in header")
+		t.Fatalf("file-revision not found in header")
 	}
 	if len(rev) != 1 {
-		t.Errorf("Unexpected revision data: %+v", rev)
+		t.Fatalf("Unexpected revision data: %+v", rev)
 	}
 
 	_, err = tm.client.CreateFile(ctx, &galleypb.CreateFileRequest{
@@ -212,7 +234,7 @@ func TestCRUD(t *testing.T) {
 		Contents: testConfig,
 	})
 	if err != nil {
-		t.Errorf("Failed to create the file %s: %v", p2, err)
+		t.Fatalf("Failed to create the file %s: %v", p2, err)
 	}
 
 	jsonData, err := yaml.YAMLToJSON([]byte(testConfig))
@@ -225,39 +247,43 @@ func TestCRUD(t *testing.T) {
 		ContentType: galleypb.ContentType_JSON,
 	})
 	if err != nil {
-		t.Errorf("Failed to update the file %s: %v", p2, err)
+		t.Fatalf("Failed to update the file %s: %v", p2, err)
 	}
 
 	file, err = tm.client.GetFile(ctx, &galleypb.GetFileRequest{Path: p2})
 	if err != nil {
-		t.Errorf("Failed to get the file %s: %v", p2, err)
+		t.Fatalf("Failed to get the file %s: %v", p2, err)
 	}
-	if file.Contents != string(jsonData) {
-		t.Errorf("Got %s, Want %s", file.Contents, string(jsonData))
+	if err := diffContent(file.Contents, string(jsonData)); err != nil {
+		t.Fatalf("GetFile(%v) wrong file contents: %v", p2, err)
 	}
-
 	resp, err = tm.client.ListFiles(ctx, &galleypb.ListFilesRequest{Path: "/dept1", IncludeContents: true})
 	if err != nil {
-		t.Errorf("Failed to list files: %v", err)
+		t.Fatalf("Failed to list files: %v", err)
 	}
-	if len(resp.Entries) != 1 || resp.Entries[0].Path != p1 || resp.Entries[0].Contents != testConfig {
-		t.Errorf("Unexpected list result: %+v", resp)
+	if len(resp.Entries) != 1 {
+		t.Fatalf("ListFiles(/depth) returned unexpected number of entries: got %v want 1 ", len(resp.Entries))
 	}
-
+	if resp.Entries[0].Path != p1 {
+		t.Fatalf("ListFiles(/depth) returned wrong path: got %v want %v", resp.Entries[0].Path, p1)
+	}
+	if err := diffContent(resp.Entries[0].Contents, testConfig); err != nil {
+		t.Fatalf("ListFiles(/dept) wrong file contents: %v", err)
+	}
 	_, err = tm.client.DeleteFile(ctx, &galleypb.DeleteFileRequest{Path: p1})
 	if err != nil {
-		t.Errorf("Failed to delete the file %s: %v", p1, err)
+		t.Fatalf("Failed to delete the file %s: %v", p1, err)
 	}
 	file, err = tm.client.GetFile(ctx, &galleypb.GetFileRequest{Path: p1})
 	if err == nil {
-		t.Errorf("Unexpectedly get %s: %+v", p1, file)
+		t.Fatalf("Unexpectedly get %s: %+v", p1, file)
 	}
 	_, err = tm.client.DeleteFile(ctx, &galleypb.DeleteFileRequest{Path: p2})
 	if err != nil {
-		t.Errorf("Failed to delete the file %s, %v", p2, err)
+		t.Fatalf("Failed to delete the file %s, %v", p2, err)
 	}
 	file, err = tm.client.GetFile(ctx, &galleypb.GetFileRequest{Path: p2})
 	if err == nil {
-		t.Errorf("Unexpectedly get %s: %+v", p2, file)
+		t.Fatalf("Unexpectedly get %s: %+v", p2, file)
 	}
 }
