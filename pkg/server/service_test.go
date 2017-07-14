@@ -165,7 +165,7 @@ func diffContent(gotConfigContents, wantFile string) error {
 	if err := yaml.Unmarshal([]byte(wantFile), &want); err != nil {
 		return fmt.Errorf("Error unmarshalling desired file contents `want`: %v", err)
 	}
-	if !reflect.DeepEqual(gotConfig, want["contents"]) {
+	if !reflect.DeepEqual(got, want["contents"]) {
 		return fmt.Errorf("Wrong YAML file contents: \ngot  %+v\nwant %+v", got, want["contents"])
 	}
 	return nil
